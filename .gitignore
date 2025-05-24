@@ -1,0 +1,43 @@
+# Node.js
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+.venv/
+*.sqlite3
+
+# macOS
+.DS_Store
+
+# Docker
+*.pid
+
+# VSCode
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+*.cover
+*.coverage
+*.cov
+*.lcov
+
+# Misc
+*.swp
+*.swo
+.idea/

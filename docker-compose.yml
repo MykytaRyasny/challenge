@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: importer
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  csv-importer:
+    build: ./csv-importer
+    command: npm run start:dev
+    ports:
+      - 3000:3000
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - db
+    volumes:
+      - ./csv-importer:/app
+      - /app/node_modules
+  query-api:
+    build: ./query-api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - 8000:8000
+
+    depends_on:
+      - db
+    volumes:
+      - ./query-api:/app
+volumes:
+  pgdata:
