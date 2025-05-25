@@ -10,6 +10,10 @@ test:
 	cd csv-importer && npm run test
 	cd query-api && pytest
 
+coverage:
+	cd csv-importer && npm run test:cov
+	cd query-api && pytest --cov=app
+
 lint:
 	cd csv-importer && npm run lint
 	cd query-api && flake8 app/ tests/
