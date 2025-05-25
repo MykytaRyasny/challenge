@@ -6,6 +6,18 @@ start:
 stop:
 	docker compose down
 
+test:
+	cd csv-importer && npm run test
+	cd query-api && pytest
+
+lint:
+	cd csv-importer && npm run lint
+	cd query-api && flake8 app/ tests/
+
+install:
+	cd csv-importer && npm install
+	cd query-api && pip install -r requirements.txt
+
 test-csv-importer:
 	cd csv-importer && npm run test
 
@@ -17,7 +29,3 @@ lint-csv-importer:
 
 lint-query-api:
 	cd query-api && flake8 app/ tests/
-
-install-deps:
-	cd csv-importer && npm install
-	cd query-api && pip install -r requirements.txt
