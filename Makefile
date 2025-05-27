@@ -1,4 +1,4 @@
-.PHONY: start stop test-csv-importer test-query-api lint-csv-importer lint-query-api install-deps
+.PHONY: start stop test coverage lint install test-csv-importer test-query-api lint-csv-importer lint-query-api clean
 
 start:
 	docker compose up --build
@@ -33,3 +33,7 @@ lint-csv-importer:
 
 lint-query-api:
 	cd query-api && flake8 app/ tests/
+
+clean:
+	docker compose down --volumes --rmi all --remove-orphans
+	docker system prune -af
