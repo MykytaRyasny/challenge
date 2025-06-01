@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston'
 import { Country } from '../entities/country'
 import { Emission } from '../entities/emission'
 import { ParentSector } from '../entities/parent-sector'
 import { Sector } from '../entities/sector'
 import { ImporterService } from './service'
-
 describe('ImporterService', () => {
   let service: ImporterService
   let countryRepository: { find: jest.Mock; save: jest.Mock }
@@ -26,6 +26,7 @@ describe('ImporterService', () => {
         { provide: getRepositoryToken(Country), useValue: countryRepository },
         { provide: getRepositoryToken(ParentSector), useValue: parentSectorRepository },
         { provide: getRepositoryToken(Sector), useValue: sectorRepository },
+        { provide: WINSTON_MODULE_PROVIDER, useValue: { info: jest.fn(), error: jest.fn() } },
       ],
     }).compile()
     service = module.get<ImporterService>(ImporterService)
@@ -39,7 +40,9 @@ describe('ImporterService', () => {
     it('should insert only new countries (case-insensitive)', async () => {
       countryRepository.find.mockResolvedValue([{ code: 'USA' }])
       const mockRows = [{ Country: 'USA' }, { Country: 'usa' }, { Country: 'CAN' }]
-      await (service as unknown as { insertCountries: Function }).insertCountries(mockRows)
+      await (
+        service as unknown as { insertCountries: (rows: unknown[]) => Promise<void> }
+      ).insertCountries(mockRows)
       expect(countryRepository.save).toHaveBeenCalledWith([{ code: 'CAN' }])
     })
   })
@@ -54,7 +57,9 @@ describe('ImporterService', () => {
         { 'Parent sector': 'Transport' },
         { 'Parent sector': 'Energy' },
       ]
-      await (service as unknown as { insertParentSectors: Function }).insertParentSectors(mockRows)
+      await (
+        service as unknown as { insertParentSectors: (rows: unknown[]) => Promise<void> }
+      ).insertParentSectors(mockRows)
       expect(parentSectorRepository.save).toHaveBeenCalledWith({ name: 'Energy' })
       expect(parentSectorRepository.save).not.toHaveBeenCalledWith({ name: 'Transport' })
     })
@@ -71,7 +76,9 @@ describe('ImporterService', () => {
         { Sector: 'Road', 'Parent sector': 'Transport' },
         { Sector: 'Power', 'Parent sector': 'Energy' },
       ]
-      await (service as unknown as { insertSectors: Function }).insertSectors(mockRows)
+      await (
+        service as unknown as { insertSectors: (rows: unknown[]) => Promise<void> }
+      ).insertSectors(mockRows)
       expect(sectorRepository.save).toHaveBeenCalledWith({
         name: 'Power',
         parentSector: { name: 'Energy' },
@@ -106,8 +113,11 @@ describe('ImporterService', () => {
           '2001': '1.2',
         },
       ]
-      await (service as unknown as { insertEmissions: Function }).insertEmissions(mockRows)
+      await (
+        service as unknown as { insertEmissions: (rows: unknown[]) => Promise<void> }
+      ).insertEmissions(mockRows)
       expect(emissionRepository.insert).toHaveBeenCalled()
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const inserted = emissionRepository.insert.mock.calls[0][0]
       expect(inserted).toEqual(
         expect.arrayContaining([
