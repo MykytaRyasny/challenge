@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from .database import SessionLocal
 from . import models, schemas
 from typing import List, Optional
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 def get_db():
     db = SessionLocal()
@@ -13,12 +17,10 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/", tags=["health"])
-def read_root():
-    return {"message": "Query API is running"}
-
 @router.get("/countries", response_model=List[schemas.Country], description="List countries with optional filtering by id, code, or name. Supports pagination with limit and offset.")
+@limiter.limit("15/minute")
 def list_countries(
+    request: Request,
     id: Optional[int] = None,
     code: Optional[str] = None,
     name: Optional[str] = None,
@@ -48,7 +50,9 @@ def list_countries(
     return [schemas.Country(id=c.id, code=c.code, name=c.name) for c in countries]
 
 @router.get("/parent-sectors", response_model=List[schemas.ParentSector], description="List parent sectors with optional filtering by id or name. Supports pagination with limit and offset.")
+@limiter.limit("15/minute")
 def list_parent_sectors(
+    request: Request,
     id: Optional[int] = None,
     name: Optional[str] = None,
     limit: int = 50,
@@ -74,7 +78,9 @@ def list_parent_sectors(
     return [schemas.ParentSector(id=ps.id, name=ps.name) for ps in parent_sectors]
 
 @router.get("/sectors", response_model=List[schemas.Sector], description="List sectors with optional filtering by id, name, or parent_sector_id. Supports pagination with limit and offset.")
+@limiter.limit("15/minute")
 def list_sectors(
+    request: Request,
     id: Optional[int] = None,
     name: Optional[str] = None,
     parent_sector_id: Optional[int] = None,
@@ -109,7 +115,9 @@ def list_sectors(
     ]
 
 @router.get("/emissions", response_model=List[schemas.Emission], description="List emissions with flexible filtering on country_id, sector_id, year, emissions, country_code, country_name, sector_name, and parent_sector_name. All filters are combined with AND logic. Supports pagination with limit and offset.")
+@limiter.limit("15/minute")
 def list_emissions(
+    request: Request,
     country_id: Optional[int] = None,
     sector_id: Optional[int] = None,
     year: Optional[int] = None,
@@ -166,3 +174,22 @@ def list_emissions(
         )
         for e in results
     ]
+
+@router.get("/metadata", description="Get metadata: total records for each table and latest import timestamp.")
+@limiter.limit("15/minute")
+def get_metadata(request: Request, db: Session = Depends(get_db)):
+    """
+    Returns metadata including total record counts for countries, parent_sectors, sectors, emissions, and the latest import timestamp (max year in emissions).
+    """
+    countries_count = db.query(models.Country).count()
+    parent_sectors_count = db.query(models.ParentSector).count()
+    sectors_count = db.query(models.Sector).count()
+    emissions_count = db.query(models.Emission).count()
+    latest_year = db.query(models.Emission.year).order_by(models.Emission.year.desc()).first()
+    return {
+        "countries_count": countries_count,
+        "parent_sectors_count": parent_sectors_count,
+        "sectors_count": sectors_count,
+        "emissions_count": emissions_count,
+        "latest_year_in_emissions": latest_year[0] if latest_year else None
+    }
